@@ -1,0 +1,4 @@
+build
+*.ll
+*.o
+test/test
