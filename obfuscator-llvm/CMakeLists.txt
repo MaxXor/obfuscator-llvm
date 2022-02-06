@@ -1,4 +1,4 @@
-add_llvm_loadable_module(ObfuscatorLLVM
+add_llvm_library(ObfuscatorLLVM MODULE
     # List your source files here.
     Obfuscation.cpp
     CryptoUtils.cpp
