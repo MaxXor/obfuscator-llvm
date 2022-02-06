@@ -404,7 +404,7 @@ namespace {
               switch(llvm::cryptoutils->get_range(3)){ // can be improved
                 case 0: //do nothing
                   break;
-                case 1: op = BinaryOperator::CreateFNeg(i->getOperand(0),*var,&*i);
+                case 1: op = BinaryOperator::CreateNeg(i->getOperand(0),*var,&*i);
                         op1 = BinaryOperator::Create(Instruction::FAdd,op,
                             i->getOperand(1),"gen",&*i);
                         break;
@@ -528,7 +528,7 @@ namespace {
       for(Module::iterator mi = M.begin(), me = M.end(); mi != me; ++mi){
         for(Function::iterator fi = mi->begin(), fe = mi->end(); fi != fe; ++fi){
           //fi->setName("");
-          TerminatorInst * tbb= fi->getTerminator();
+          auto tbb= fi->getTerminator();
           if(tbb->getOpcode() == Instruction::Br){
             BranchInst * br = (BranchInst *)(tbb);
             if(br->isConditional()){
@@ -554,8 +554,8 @@ namespace {
       // Replacing all the branches we found
       for(std::vector<Instruction*>::iterator i =toEdit.begin();i!=toEdit.end();++i){
         //if y < 10 || x*(x+1) % 2 == 0
-        opX = new LoadInst ((Value *)x, "", (*i));
-        opY = new LoadInst ((Value *)y, "", (*i));
+        opX = new LoadInst (x->getValueType(), x, "", (*i));
+        opY = new LoadInst (y->getValueType(), y, "", (*i));
 
         op = BinaryOperator::Create(Instruction::Sub, (Value *)opX,
             ConstantInt::get(Type::getInt32Ty(M.getContext()), 1,
