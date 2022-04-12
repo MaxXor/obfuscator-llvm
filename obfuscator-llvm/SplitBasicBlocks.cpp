@@ -11,17 +11,19 @@
 //
 //===----------------------------------------------------------------------===//
 
+#include "CryptoUtils.h"
 #include "SplitBasicBlocks.h"
 #include "Utils.h"
-#include "CryptoUtils.h"
 
 #define DEBUG_TYPE "split"
 
 using namespace llvm;
-using namespace std;
 
 // Stats
 STATISTIC(Split, "Basicblock splitted");
+
+static cl::opt<bool> SplitFlag("split", cl::init(false),
+                           cl::desc("Enable basic block splitting"));
 
 static cl::opt<int> SplitNum("split_num", cl::init(2),
                              cl::desc("Split <split_num> time each BB"));
@@ -29,13 +31,8 @@ static cl::opt<int> SplitNum("split_num", cl::init(2),
 namespace {
 struct SplitBasicBlock : public FunctionPass {
   static char ID; // Pass identification, replacement for typeid
-  bool flag;
 
   SplitBasicBlock() : FunctionPass(ID) {}
-  SplitBasicBlock(bool flag) : FunctionPass(ID) {
-    
-    this->flag = flag;
-  }
 
   bool runOnFunction(Function &F);
   void split(Function *f);
@@ -43,27 +40,39 @@ struct SplitBasicBlock : public FunctionPass {
   bool containsPHI(BasicBlock *b);
   void shuffle(std::vector<int> &vec);
 };
-}
+} // namespace
 
 char SplitBasicBlock::ID = 0;
 static RegisterPass<SplitBasicBlock> X("splitbbl", "BasicBlock splitting");
 
-Pass *llvm::createSplitBasicBlock(bool flag) {
-  return new SplitBasicBlock(flag);
+Pass *llvm::createSplitBasicBlock() {
+  return new SplitBasicBlock();
+}
+
+PreservedAnalyses SplitBasicBlockPass::run(Function &F, FunctionAnalysisManager &AM){
+  SplitBasicBlock split;
+  split.runOnFunction(F);
+  return PreservedAnalyses::none();
 }
 
 bool SplitBasicBlock::runOnFunction(Function &F) {
+  Function *tmp = &F;
+
   // Check if the number of applications is correct
+  auto nums = readAnnotate(tmp, SplitNum.ArgStr);
+  if (!nums.empty()) {
+    int value = SplitNum;
+    if (!nums.getAsInteger(0, value))
+      SplitNum.setValue(value);
+  }
   if (!((SplitNum > 1) && (SplitNum <= 10))) {
-    errs()<<"Split application basic block percentage\
+    errs() << "Split application basic block percentage\
             -split_num=x must be 1 < x <= 10";
     return false;
   }
 
-  Function *tmp = &F;
-
   // Do we obfuscate
-  if (toObfuscate(flag, tmp, "split")) {
+  if (toObfuscate(SplitFlag, tmp, "split")) {
     split(tmp);
     ++Split;
   }
@@ -117,7 +126,7 @@ void SplitBasicBlock::split(Function *f) {
         ++it;
       }
       last = test[i];
-      if(toSplit->size() < 2)
+      if (toSplit->size() < 2)
         continue;
       toSplit = toSplit->splitBasicBlock(it, toSplit->getName() + ".split");
     }

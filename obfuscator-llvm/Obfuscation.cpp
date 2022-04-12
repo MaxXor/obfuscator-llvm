@@ -1,16 +1,16 @@
 #include "llvm/IR/LegacyPassManager.h"
 #include "llvm/Transforms/IPO/PassManagerBuilder.h"
+#include "llvm/Passes/PassPlugin.h"
+#include "llvm/Passes/PassBuilder.h"
 #include "Substitution.h"
 #include "Flattening.h"
 #include "SplitBasicBlocks.h"
 #include "BogusControlFlow.h"
 
+using namespace llvm;
+
 // Flags for obfuscation
-static cl::opt<bool> Flattening("fla", cl::init(false), cl::desc("Enable the flattening pass"));
-static cl::opt<bool> BogusControlFlow("bcf", cl::init(false), cl::desc("Enable bogus control flow"));
-static cl::opt<bool> Substitution("sub", cl::init(false), cl::desc("Enable instruction substitutions"));
 static cl::opt<std::string> AesSeed("aesSeed", cl::init(""), cl::desc("seed for the AES-CTR PRNG"));
-static cl::opt<bool> Split("spli", cl::init(false), cl::desc("Enable basic block splitting"));
 
 static void loadPass(const PassManagerBuilder &Builder, legacy::PassManagerBase &PM) {
   // Initialization of the global cryptographically
@@ -20,10 +20,10 @@ static void loadPass(const PassManagerBuilder &Builder, legacy::PassManagerBase 
       exit(1);
     }
   }
-  PM.add(createSplitBasicBlock(Split));
-  PM.add(createBogus(BogusControlFlow));
-  PM.add(createFlattening(Flattening));
-  PM.add(createSubstitution(Substitution));
+  PM.add(createSplitBasicBlock());
+  PM.add(createBogus());
+  PM.add(createFlattening());
+  PM.add(createSubstitution());
 }
 
 // These constructors add our pass to a list of global extensions.
@@ -37,3 +37,24 @@ static RegisterStandardPasses clangtoolLoader_O0(PassManagerBuilder::EP_EnabledO
 // you're in -O0, and EP_OptimizerLast only runs if you're not). You can check
 // include/llvm/Transforms/IPO/PassManagerBuilder.h header and
 // lib/Transforms/IPO/PassManagerBuilder.cpp file for the exact behavior.
+
+PassPluginLibraryInfo getObfuscatorLLVMPluginInfo(){
+  return {LLVM_PLUGIN_API_VERSION, "ObfuscatorLLVM", LLVM_VERSION_STRING, [](PassBuilder &PB){
+    PB.registerVectorizerStartEPCallback([](FunctionPassManager &PM, PassBuilder::OptimizationLevel level){
+      if(!AesSeed.empty()) {
+        if(!llvm::cryptoutils->prng_seed(AesSeed.c_str())) {
+          exit(1);
+        }
+      }
+      PM.addPass(SplitBasicBlockPass());
+      PM.addPass(BogusControlFlowPass());
+      PM.addPass(FlatteningPass());
+      PM.addPass(SubstitutionPass());
+    });
+  }};
+}
+
+extern "C" LLVM_ATTRIBUTE_WEAK ::llvm::PassPluginLibraryInfo
+llvmGetPassPluginInfo() {
+  return getObfuscatorLLVMPluginInfo();
+}
