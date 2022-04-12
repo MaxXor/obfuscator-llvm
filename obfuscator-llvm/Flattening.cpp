@@ -20,30 +20,31 @@
 
 using namespace llvm;
 
+static cl::opt<bool> FlatteningArg("fla", cl::init(false),
+                                cl::desc("Enable the flattening pass"));
+
 // Stats
 STATISTIC(Flattened, "Functions flattened");
 
 namespace {
 struct Flattening : public FunctionPass {
-  static char ID;  // Pass identification, replacement for typeid
-  bool flag;
+  static char ID; // Pass identification, replacement for typeid
 
   Flattening() : FunctionPass(ID) {}
-  Flattening(bool flag) : FunctionPass(ID) { this->flag = flag; }
 
   bool runOnFunction(Function &F);
   bool flatten(Function *f);
 };
-}
+} // namespace
 
 char Flattening::ID = 0;
 static RegisterPass<Flattening> X("flattening", "Call graph flattening");
-Pass *llvm::createFlattening(bool flag) { return new Flattening(flag); }
+Pass *llvm::createFlattening() { return new Flattening(); }
 
 bool Flattening::runOnFunction(Function &F) {
   Function *tmp = &F;
   // Do we obfuscate
-  if (toObfuscate(flag, tmp, "fla")) {
+  if (toObfuscate(FlatteningArg, tmp, "fla")) {
     if (flatten(tmp)) {
       ++Flattened;
     }
@@ -52,8 +53,15 @@ bool Flattening::runOnFunction(Function &F) {
   return false;
 }
 
+PreservedAnalyses FlatteningPass::run(Function &F, FunctionAnalysisManager &AM){
+  Flattening fla;
+  fla.runOnFunction(F);
+
+  return PreservedAnalyses::none();
+}
+
 bool Flattening::flatten(Function *f) {
-  vector<BasicBlock *> origBB;
+  std::vector<BasicBlock *> origBB;
   BasicBlock *loopEntry;
   BasicBlock *loopEnd;
   LoadInst *load;
@@ -65,9 +73,14 @@ bool Flattening::flatten(Function *f) {
   llvm::cryptoutils->get_bytes(scrambling_key, 16);
   // END OF SCRAMBLER
 
+#if LLVM_VERSION_MAJOR >= 9
+    // >=9.0, LowerSwitchPass depends on LazyValueInfoWrapperPass, which cause AssertError.
+    // So I move LowerSwitchPass into register function, just before FlatteningPass.
+#else
   // Lower switch
   FunctionPass *lower = createLowerSwitchPass();
   lower->runOnFunction(*f);
+#endif
 
   // Save all original BB
   for (Function::iterator i = f->begin(); i != f->end(); ++i) {
@@ -89,7 +102,7 @@ bool Flattening::flatten(Function *f) {
   origBB.erase(origBB.begin());
 
   // Get a pointer on the first BB
-  Function::iterator tmp = f->begin();  //++tmp;
+  Function::iterator tmp = f->begin(); //++tmp;
   BasicBlock *insert = &*tmp;
 
   // If main begin with an if
@@ -101,7 +114,7 @@ bool Flattening::flatten(Function *f) {
   if ((br != NULL && br->isConditional()) ||
       insert->getTerminator()->getNumSuccessors() > 1) {
     BasicBlock::iterator i = insert->end();
-	--i;
+    --i;
 
     if (insert->size() > 1) {
       --i;
@@ -126,7 +139,7 @@ bool Flattening::flatten(Function *f) {
   loopEntry = BasicBlock::Create(f->getContext(), "loopEntry", f, insert);
   loopEnd = BasicBlock::Create(f->getContext(), "loopEnd", f, insert);
 
-  load = new LoadInst(switchVar->getAllocatedType(), switchVar, "switchVar", loopEntry);
+  load = new LoadInst(switchVar->getType()->getElementType(), switchVar, "switchVar", loopEntry);
 
   // Move first BB on top
   insert->moveBefore(loopEntry);
@@ -149,8 +162,8 @@ bool Flattening::flatten(Function *f) {
   BranchInst::Create(loopEntry, &*f->begin());
 
   // Put all BB in the switch
-  for (vector<BasicBlock *>::iterator b = origBB.begin(); b != origBB.end();
-       ++b) {
+  for (std::vector<BasicBlock *>::iterator b = origBB.begin();
+       b != origBB.end(); ++b) {
     BasicBlock *i = *b;
     ConstantInt *numCase = NULL;
 
@@ -165,8 +178,8 @@ bool Flattening::flatten(Function *f) {
   }
 
   // Recalculate switchVar
-  for (vector<BasicBlock *>::iterator b = origBB.begin(); b != origBB.end();
-       ++b) {
+  for (std::vector<BasicBlock *>::iterator b = origBB.begin();
+       b != origBB.end(); ++b) {
     BasicBlock *i = *b;
     ConstantInt *numCase = NULL;
 

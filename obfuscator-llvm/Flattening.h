@@ -1,4 +1,4 @@
-//===- Flattening.h - Flattening Obfuscation pass--------------------------===//
+//===- FlatteningIncludes.h - Flattening Obfuscation pass------------------===//
 //
 //                     The LLVM Compiler Infrastructure
 //
@@ -11,27 +11,29 @@
 //
 //===----------------------------------------------------------------------===//
 
-#ifndef _FLATTENING_INCLUDES_
-#define _FLATTENING_INCLUDES_
+#ifndef _OBFUSCATION_FLATTENING_H_
+#define _OBFUSCATION_FLATTENING_H_
 
-
-// LLVM include
-#include "llvm/Pass.h"
-#include "llvm/IR/Function.h"
 #include "llvm/ADT/Statistic.h"
-#include "llvm/Transforms/Utils/Local.h" // For DemoteRegToStack and DemotePHIToStack
-#include "llvm/Transforms/IPO.h"
-#include "llvm/Transforms/Scalar.h"
+#include "llvm/IR/Function.h"
 #include "llvm/IR/Module.h"
+#include "llvm/Pass.h"
 #include "llvm/Support/CommandLine.h"
+#include "llvm/Transforms/IPO.h"
 #include "CryptoUtils.h"
 #include "Utils.h"
-
-// Namespace
-using namespace std;
+#include "llvm/Transforms/Scalar.h"
+#include "llvm/Transforms/Utils/Local.h" // For DemoteRegToStack and DemotePHIToStack
+#include "llvm/IR/PassManager.h" // New PassManager
 
 namespace llvm {
-	Pass *createFlattening(bool flag);
-}
+Pass *createFlattening();
+class FlatteningPass : public PassInfoMixin<FlatteningPass>{ // New PassManager
+public:
+  PreservedAnalyses run(Function &F, FunctionAnalysisManager &AM);
+
+  static bool isRequired() { return true; }
+};
+} // namespace llvm
 
 #endif

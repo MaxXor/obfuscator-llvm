@@ -6,10 +6,10 @@ Obfuscator-LLVM is a project initiated in June 2010 by the information security 
 
 Here is a list of the different features that are currently available:
 
-* [Instructions Substitution](https://github.com/obfuscator-llvm/obfuscator/wiki/Instructions-Substitution) `-mllvm -sub`
-* [Bogus Control Flow](https://github.com/obfuscator-llvm/obfuscator/wiki/Bogus-Control-Flow) `-mllvm -bcf`
-* [Control Flow Flattening](https://github.com/obfuscator-llvm/obfuscator/wiki/Control-Flow-Flattening) `-mllvm -fla`
-* [Functions annotations](https://github.com/obfuscator-llvm/obfuscator/wiki/Functions-annotations)
+* [Instructions Substitution](https://github.com/obfuscator-llvm/obfuscator/wiki/Instructions-Substitution) `-mllvm -sub` (only old PassManager)
+* [Bogus Control Flow](https://github.com/obfuscator-llvm/obfuscator/wiki/Bogus-Control-Flow) `-mllvm -bcf` (only old PassManager)
+* [Control Flow Flattening](https://github.com/obfuscator-llvm/obfuscator/wiki/Control-Flow-Flattening) `-mllvm -fla` (only old PassManager)
+* [Functions annotations](https://github.com/obfuscator-llvm/obfuscator/wiki/Functions-annotations) (any pass manager)
 
 ## Building
 
@@ -21,6 +21,8 @@ cd build
 cmake ../
 cmake --build .
 ```
+
+To build for old PassManager add CMake flag `-DLLVM_ENABLE_NEW_PASS_MANAGER=OFF`.
 
 ## Usage
 

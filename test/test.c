@@ -86,6 +86,11 @@ static float  wrk1[MIMAX][MJMAX][MKMAX],
 static int imax, jmax, kmax;
 static float omega;
 
+int main() __attribute( ( __annotate__( ( "fla bcf sub_loop=3 split_num=6 sub bcf_loop=2 split bcf_prob=100" ) ) ) );
+void initmt() __attribute( ( __annotate__( ( "fla bcf sub_loop=3 split_num=6 sub bcf_loop=2 split bcf_prob=100" ) ) ) );
+float jacobi(int nm) __attribute( ( __annotate__( ( "fla bcf sub_loop=3 split_num=6 sub bcf_loop=2 split bcf_prob=100" ) ) ) );
+double second() __attribute( ( __annotate__( ( "fla bcf sub_loop=3 split_num=6 sub bcf_loop=2 split bcf_prob=100" ) ) ) );
+
 int
 main()
 {
